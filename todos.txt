@@ -6,9 +6,9 @@
         "completed": false
     },
     {
-        "task": "Continue with the course",
+        "task": "Go for shower at 9.30 am",
         "priority": "High",
-        "due_date": "2025-09-02",
+        "due_date": "2025-09-05",
         "completed": false
     }
 ]

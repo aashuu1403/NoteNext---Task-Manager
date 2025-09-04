@@ -5,40 +5,35 @@ from datetime import date
 # Set the page to use a wide layout
 st.set_page_config(layout="wide")
 
-# CSS for the expander header and header alignment
+# --- CUSTOM CSS ---
 st.markdown("""
 <style>
-    /* Style for the entire top header section */
-    .header-section {
-        padding-bottom: 1rem; /* Add some space below the header content */
-        margin-bottom: 1rem; /* Space between header and content below */
-        border-bottom: 1px solid #333; /* This creates the horizontal line */
+    /* Target the bordered containers to increase border and set height */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border: 2px solid #333 !important;
+        min-height: 65vh; /* Sets a minimum height (65% of the viewport height) */
     }
 
-    /* This rule aligns the header items vertically */
-    .header-container [data-testid="stHorizontalBlock"] {
-        align-items: center;
-    }
-
-    /* Target the expander inside our custom container */
-    .about-container [data-testid="stExpander"] {
-        width: 350px !important;
-        border: 1px solid #333 !important; /* Adjusted for dark theme */
-        border-radius: 5px !important;
-        box-shadow: none !important;
-    }
-
-    /* Style the header part of the expander */
-    .about-container [data-testid="stExpander"] summary {
-        font-size: 1.1rem !important;
-        font-weight: 600 !important;
-        padding: 0.75rem 1rem !important;
+    /* Style for individual to-do cards */
+    .todo-card {
+        background-color: #262730;
+        border-radius: 7px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        border-left: 5px solid #444;
         display: flex;
+        justify-content: space-between;
         align-items: center;
+    }
+
+    /* Adjust button spacing within the card */
+    .todo-card .stButton {
+        text-align: right;
     }
 </style>
 """, unsafe_allow_html=True)
 
+# --- HELPER FUNCTIONS ---
 def get_todos():
     return functions.get_todos("todos.txt")
 
@@ -57,12 +52,14 @@ def add_todo():
         })
         functions.write_todos(todos, "todos.txt")
         st.success("Task added successfully!")
+        st.session_state["new_todo"] = "" # Clear input after adding
+
 
 def toggle_complete(index):
     todos = get_todos()
     todos[index]["completed"] = not todos[index]["completed"]
     functions.write_todos(todos, "todos.txt")
-    st.success("Task updated!")
+
 
 def delete_todo(index):
     todos = get_todos()
@@ -86,6 +83,18 @@ def save_changes():
     functions.write_todos(todos, "todos.txt")
     st.session_state["edit_index"] = None # Clear edit mode
     st.success("Task updated successfully!")
+    # Clear form inputs after saving
+    st.session_state["new_todo"] = ""
+    st.session_state["new_todo_priority"] = "Medium"
+    st.session_state["new_todo_date"] = date.today()
+
+
+def cancel_edit():
+    st.session_state["edit_index"] = None
+    # Clear the input fields
+    st.session_state["new_todo"] = ""
+    st.session_state["new_todo_priority"] = "Medium"
+    st.session_state["new_todo_date"] = date.today()
 
 def clear_completed_todos():
     todos = get_todos()
@@ -96,17 +105,77 @@ def clear_completed_todos():
 if "edit_index" not in st.session_state:
     st.session_state["edit_index"] = None
 
-# Simplified header layout - NOW WRAPPED IN .header-section
-st.markdown('<div class="header-section">', unsafe_allow_html=True)
-st.markdown('<div class="header-container">', unsafe_allow_html=True)
-title_col, about_col = st.columns([0.85, 0.15])
+# --- HEADER ---
+st.markdown(
+    "<h1 style='text-align: center; font-weight: bold; font-size: 3.5rem; margin-bottom: 2rem;'>NoteNext ✅</h1>",
+    unsafe_allow_html=True
+)
 
-with title_col:
-    st.markdown("<h1 style='text-align: center; font-size: 2.5rem; margin-top: 0; margin-bottom: 0;'>NoteNext ✅</h1>", unsafe_allow_html=True)
 
-with about_col:
-    with st.container():
-        st.markdown('<div class="about-container">', unsafe_allow_html=True)
+# --- MAIN LAYOUT ---
+col_left, col_right = st.columns(2, gap="large")
+
+# --- LEFT COLUMN (TASK LIST) ---
+with col_left:
+    with st.container(border=True):
+        todos = get_todos()
+        st.markdown(f"<h3 style='font-size: 1.5rem;'>You have {len(todos)} pending tasks.</h3>", unsafe_allow_html=True)
+
+        if not todos:
+            st.info("Your to-do list is empty. Add a new task on the right!")
+        else:
+            st.button("Clear Completed", on_click=clear_completed_todos, use_container_width=True)
+
+        st.markdown("<p style='font-size: 1.0rem; margin-top: 1rem;'>Search for a task</p>", unsafe_allow_html=True)
+        search_query = st.text_input(
+            "Search tasks",
+            placeholder="Search...",
+            key="search_query",
+            label_visibility="hidden"
+        )
+
+        filtered_todos = [
+            todo for todo in todos
+            if search_query.lower() in todo['task'].lower()
+        ]
+
+        PRIORITY_COLORS = {"High": "#FF4B4B", "Medium": "#FFA500", "Low": "#1E90FF"}
+
+        for index, todo in enumerate(filtered_todos):
+            with st.container():
+                border_color = PRIORITY_COLORS.get(todo.get('priority', 'Medium'))
+                st.markdown(f'<div class="todo-card" style="border-left-color: {border_color};">', unsafe_allow_html=True)
+
+                task_col, actions_col = st.columns([0.7, 0.3])
+
+                with task_col:
+                    task_text = todo['task']
+                    if todo['completed']:
+                        task_text = f"~~{task_text}~~"
+                    
+                    due_date = todo.get('due_date', '')
+
+                    st.markdown(f"""
+                        <div style="display: flex; flex-direction: column;">
+                            <span style='font-size: 18px;'>{task_text}</span>
+                            <span style='font-size: 12px; color: #aaa; margin-top: 5px;'>Due: {due_date}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                with actions_col:
+                    btn_col1, btn_col2, btn_col3 = st.columns(3)
+                    with btn_col1:
+                        st.button("✅" if not todo['completed'] else "🟢", key=f"complete_{index}", on_click=toggle_complete, args=(index,), help="Mark as complete", use_container_width=True)
+                    with btn_col2:
+                        st.button("✏️", key=f"edit_{index}", on_click=set_edit_mode, args=(index,), help="Edit task", use_container_width=True)
+                    with btn_col3:
+                        st.button("❌", key=f"delete_{index}", on_click=delete_todo, args=(index,), help="Delete task", use_container_width=True)
+
+                st.markdown('</div>', unsafe_allow_html=True)
+
+# --- RIGHT COLUMN (ADD/EDIT FORM) ---
+with col_right:
+    with st.container(border=True):
         with st.expander("About this app"):
             st.markdown("""
                 **NoteNext ✅** is a simple and elegant to-do list application.
@@ -114,79 +183,32 @@ with about_col:
                 * **Complete:** Click the checkbox next to a task.
                 * **Delete:** Remove a task with the ❌ button.
             """)
-        st.markdown('</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True) # CLOSE NEW WRAPPER
 
-# Main two-column layout
-col_left, col_divider, col_right = st.columns([0.475, 0.05, 0.475])
 
-with col_left:
-    todos = get_todos()
-    st.markdown(f"<h3 style='font-size: 1.5rem;'>You have {len(todos)} pending tasks.</h3>", unsafe_allow_html=True)
+        form_title = "Edit Task" if st.session_state.get("edit_index") is not None else "Add a To-Do"
+        st.markdown(f"<h2 style='font-size: 1.75rem; margin-top: 1rem;'>{form_title}</h2>", unsafe_allow_html=True)
 
-    if not todos:
-        st.markdown(f"<p style='font-size: 1.0rem;'>Your to-do list is empty. Add a new task on the right!</p>", unsafe_allow_html=True)
-    else:
-        st.button("Clear Completed", on_click=clear_completed_todos)
+        with st.form(key="todo_form", clear_on_submit=True):
+            st.text_input(
+                "Task",
+                placeholder="Add new to-do...",
+                key="new_todo"
+            )
+            st.selectbox(
+                "Priority",
+                options=["High", "Medium", "Low"],
+                key="new_todo_priority"
+            )
+            st.date_input(
+                "Due Date",
+                key="new_todo_date"
+            )
 
-    st.markdown("<p style='font-size: 1.0rem;'>Search for a task</p>", unsafe_allow_html=True)
-    search_query = st.text_input(
-        "Search tasks",
-        placeholder="Search...",
-        key="search_query",
-        label_visibility="hidden"
-    )
-
-    filtered_todos = [
-        todo for todo in todos
-        if search_query.lower() in todo['task'].lower()
-    ]
-
-    for index, todo in enumerate(filtered_todos):
-        col1, col2, col3, col4 = st.columns([0.7, 0.1, 0.1, 0.1])
-
-        task_text = todo['task']
-        if todo['completed']:
-            task_text = f"~~{task_text}~~"
-
-        with col1:
-            st.markdown(f"<span style='font-size: 18px;'>{task_text}</span>", unsafe_allow_html=True)
-        with col2:
-            complete_button_label = "✅" if not todo['completed'] else "🟢"
-            st.button(complete_button_label, key=f"complete_{index}", on_click=toggle_complete, args=(index,))
-        with col3:
-            st.button("✏️", key=f"edit_{index}", on_click=set_edit_mode, args=(index,))
-        with col4:
-            st.button("❌", key=f"delete_{index}", on_click=delete_todo, args=(index,))
-
-with col_divider:
-    st.markdown("""
-        <div style="border-left: 1px solid #444; height: 100vh; position: absolute; left: 50%;"></div>
-    """, unsafe_allow_html=True)
-
-with col_right:
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("<h2 style='font-size: 1.75rem;'>Add or Edit a To-Do</h2>", unsafe_allow_html=True)
-
-    with st.form(key="todo_form", clear_on_submit=True):
-        st.text_input(
-            "Task",
-            placeholder="Add new to-do...",
-            key="new_todo"
-        )
-        st.selectbox(
-            "Priority",
-            options=["High", "Medium", "Low"],
-            key="new_todo_priority"
-        )
-        st.date_input(
-            "Due Date",
-            key="new_todo_date"
-        )
-
-        # Use on_click callbacks for robust form handling
-        if st.session_state.get("edit_index") is not None:
-            st.form_submit_button("Save Changes", on_click=save_changes)
-        else:
-            st.form_submit_button("Add To-Do", on_click=add_todo)
+            if st.session_state.get("edit_index") is not None:
+                save_col, cancel_col = st.columns(2)
+                with save_col:
+                    st.form_submit_button("Save Changes", on_click=save_changes, use_container_width=True)
+                with cancel_col:
+                    st.form_submit_button("Cancel", on_click=cancel_edit, use_container_width=True)
+            else:
+                st.form_submit_button("Add To-Do", on_click=add_todo, use_container_width=True)
