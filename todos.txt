@@ -1,0 +1,14 @@
+[
+    {
+        "task": "Make \"Konark Interior\" website",
+        "priority": "Medium",
+        "due_date": "2026-03-14",
+        "completed": false
+    },
+    {
+        "task": "Continue with the course",
+        "priority": "High",
+        "due_date": "2025-09-02",
+        "completed": false
+    }
+]
