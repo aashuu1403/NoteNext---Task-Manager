@@ -107,7 +107,7 @@ if "edit_index" not in st.session_state:
 
 # --- HEADER ---
 st.markdown(
-    "<h1 style='text-align: center; font-weight: bold; font-size: 3.5rem; margin-bottom: 2rem;'>NoteNext ✅</h1>",
+    "<h1 style='text-align: center; font-weight: bold; font-size: 3.5rem; margin-bottom: 3.5rem;'>NoteNext ✅</h1>",
     unsafe_allow_html=True
 )
 
